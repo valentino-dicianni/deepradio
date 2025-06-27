@@ -1,0 +1,22 @@
+#!/bin/bash
+
+user_agent="User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
+referer="Referer: http://www.hbr1.com/cgi-bin/main.php?module=listen"
+stations_dir="stations"
+
+hbr1_stations=("trance" "ambient" "tronic")
+
+for station in ${hbr1_stations[@]}; do
+  printf "\nDownloading station $station...\n"
+
+  curl -X GET "http://www.hbr1.com/playlist/${station}.ogg.m3u" \
+    -H "$user_agent" \
+    -H "$referer" \
+    -o "${stations_dir}/${station}.ogg.m3u"
+  sleep 0.5 # seconds
+done
+
+printf "\nDownloading station Dubstep FM...\n"
+curl -X GET "www.dubstep.fm/listen.m3u" \
+  -H "$user_agent" \
+  -o "${stations_dir}/dubstepfm.ogg.m3u"

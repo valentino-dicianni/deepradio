@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# ASCII art banner
+BANNER="
+    ··················································
+    : ____                  ____           _ _       :
+    :|  _ \  ___  ___ _ __ |  _ \ __ _  __| (_) ___  :
+    :| | | |/ _ \/ _ \  _ \| |_) / _  |/ _  | |/ _ \ :
+    :| |_| |  __/  __/ |_) |  _ < (_| | (_| | | (_) |:
+    :|____/ \___|\___| .__/|_| \_\__,_|\__,_|_|\___/ :
+    :                |_|                             :
+    ··················································
+"
+
+# Define the radio menu options and corresponding commands
+declare -A radio_menu
+radio_menu["Ambient"]="ambient.ogg.m3u"
+radio_menu["Trance"]="trance.ogg.m3u"
+radio_menu["Tronic"]="tronic.ogg.m3u"
+radio_menu["Dubstep"]="dubstepfm.ogg.m3u"
+
+stations_dir="stations"
+
+# Function to display the radio menu
+display_menu() {
+  clear
+  echo "$BANNER"
+  echo "Radio Menu:"
+  echo "1. Trance"
+  echo "2. Ambient"
+  echo "3. Tronic"
+  echo "4. Dubstep"
+  echo "5. Quit"
+}
+
+play_radio_stream() {
+  clear
+  echo "$BANNER"
+  echo "Playing $1" radio stream...
+  mpv "${stations_dir}/${radio_menu[$1]}"
+}
+
+# Main program loop
+while true; do
+  display_menu
+  read -p "Select an option: " option
+
+  case $option in
+  1 | 2 | 3 | 4)
+    option_name=$(echo "${!radio_menu[@]}" | cut -d' ' -f$option)
+    play_radio_stream "$option_name"
+    ;;
+  5)
+    echo "Goodbye!"
+    exit 0
+    ;;
+  *)
+    echo "$BANNER"
+    echo "Invalid option. Please try again."
+    read -p "Press Enter to continue..."
+    ;;
+  esac
+done
