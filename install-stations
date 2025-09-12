@@ -3,20 +3,70 @@
 user_agent="User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
 referer="Referer: http://www.hbr1.com/cgi-bin/main.php?module=listen"
 stations_dir="stations"
+config_file="stations/stations.conf"
 
-hbr1_stations=("trance" "ambient" "tronic")
+# Create stations directory if it doesn't exist
+mkdir -p "$stations_dir"
 
-for station in ${hbr1_stations[@]}; do
-  printf "\nDownloading station $station...\n"
+# Check if config file exists
+if [ ! -f "$config_file" ]; then
+  echo "Error: $config_file not found!"
+  echo "Please create a stations configuration file."
+  exit 1
+fi
 
-  curl -X GET "http://www.hbr1.com/playlist/${station}.ogg.m3u" \
-    -H "$user_agent" \
-    -H "$referer" \
-    -o "${stations_dir}/${station}.ogg.m3u"
-  sleep 0.5 # seconds
-done
+echo "Checking and installing radio stations..."
 
-printf "\nDownloading station Dubstep FM...\n"
-curl -X GET "www.dubstep.fm/listen.m3u" \
-  -H "$user_agent" \
-  -o "${stations_dir}/dubstepfm.ogg.m3u"
+installed_count=0
+total_count=0
+
+# Read stations from config file
+while IFS='|' read -r station_name display_name url needs_referer; do
+  # Skip empty lines and comments
+  [[ -z "$station_name" || "$station_name" =~ ^# ]] && continue
+  
+  ((total_count++))
+  station_file="${stations_dir}/${station_name}.ogg.m3u"
+  
+  if [ ! -f "$station_file" ]; then
+    echo "Installing station: $station_name ($display_name)"
+    
+    if [ "$needs_referer" = "true" ]; then
+      # HBR1 stations with referer
+      curl -X GET "$url" \
+        -H "$user_agent" \
+        -H "$referer" \
+        -o "$station_file" \
+        --connect-timeout 10 \
+        --max-time 30
+    else
+      # Other stations without referer
+      curl -X GET "$url" \
+        -H "$user_agent" \
+        -o "$station_file" \
+        --connect-timeout 10 \
+        --max-time 30
+    fi
+    
+    if [ $? -eq 0 ] && [ -s "$station_file" ]; then
+      echo "✓ $station_name installed successfully"
+      ((installed_count++))
+    else
+      echo "✗ Failed to install $station_name"
+      rm -f "$station_file" 2>/dev/null
+    fi
+    
+    sleep 0.5
+  else
+    echo "✓ $station_name already installed"
+    ((installed_count++))
+  fi
+done < "$config_file"
+
+echo ""
+echo "Stations status: $installed_count/$total_count available"
+
+if [ $installed_count -eq 0 ]; then
+  echo "No stations available. Please check your internet connection."
+  exit 1
+fi

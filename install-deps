@@ -1,0 +1,212 @@
+#!/bin/bash
+
+# DeepRadio Dependencies Installer
+# Installs mpv and curl if missing
+
+echo "DeepRadio Dependencies Installer"
+echo "================================"
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to install mpv
+install_mpv() {
+    echo "Installing mpv..."
+    
+    if command -v apt &> /dev/null; then
+        # Ubuntu/Debian
+        echo "Detected Ubuntu/Debian system."
+        echo "Would you like to install mpv automatically? (y/n)"
+        read -p "> " confirm
+        if [[ $confirm =~ ^[Yy]$ ]]; then
+            sudo apt update && sudo apt install -y mpv
+            if [ $? -eq 0 ]; then
+                echo "✓ mpv installed successfully"
+                return 0
+            else
+                echo "✗ Failed to install mpv"
+                return 1
+            fi
+        else
+            echo "Please install mpv manually: sudo apt install mpv"
+            return 1
+        fi
+    elif command -v dnf &> /dev/null; then
+        # Fedora/RHEL
+        echo "Detected Fedora/RHEL system."
+        echo "Would you like to install mpv automatically? (y/n)"
+        read -p "> " confirm
+        if [[ $confirm =~ ^[Yy]$ ]]; then
+            sudo dnf install -y mpv
+            if [ $? -eq 0 ]; then
+                echo "✓ mpv installed successfully"
+                return 0
+            else
+                echo "✗ Failed to install mpv"
+                return 1
+            fi
+        else
+            echo "Please install mpv manually: sudo dnf install mpv"
+            return 1
+        fi
+    elif command -v pacman &> /dev/null; then
+        # Arch Linux
+        echo "Detected Arch Linux system."
+        echo "Would you like to install mpv automatically? (y/n)"
+        read -p "> " confirm
+        if [[ $confirm =~ ^[Yy]$ ]]; then
+            sudo pacman -S --noconfirm mpv
+            if [ $? -eq 0 ]; then
+                echo "✓ mpv installed successfully"
+                return 0
+            else
+                echo "✗ Failed to install mpv"
+                return 1
+            fi
+        else
+            echo "Please install mpv manually: sudo pacman -S mpv"
+            return 1
+        fi
+    elif command -v brew &> /dev/null; then
+        # macOS
+        echo "Detected macOS system."
+        echo "Would you like to install mpv automatically? (y/n)"
+        read -p "> " confirm
+        if [[ $confirm =~ ^[Yy]$ ]]; then
+            brew install mpv
+            if [ $? -eq 0 ]; then
+                echo "✓ mpv installed successfully"
+                return 0
+            else
+                echo "✗ Failed to install mpv"
+                return 1
+            fi
+        else
+            echo "Please install mpv manually: brew install mpv"
+            return 1
+        fi
+    else
+        # Unknown system
+        echo "Unable to detect package manager."
+        echo "Please install mpv manually for your system."
+        echo ""
+        echo "Common installation commands:"
+        echo "  Ubuntu/Debian: sudo apt install mpv"
+        echo "  Fedora/RHEL: sudo dnf install mpv"
+        echo "  Arch Linux: sudo pacman -S mpv"
+        echo "  macOS: brew install mpv"
+        return 1
+    fi
+}
+
+# Function to install curl
+install_curl() {
+    echo "Installing curl..."
+    
+    if command -v apt &> /dev/null; then
+        # Ubuntu/Debian
+        sudo apt update && sudo apt install -y curl
+        if [ $? -eq 0 ]; then
+            echo "✓ curl installed successfully"
+            return 0
+        else
+            echo "✗ Failed to install curl"
+            return 1
+        fi
+    elif command -v dnf &> /dev/null; then
+        # Fedora/RHEL
+        sudo dnf install -y curl
+        if [ $? -eq 0 ]; then
+            echo "✓ curl installed successfully"
+            return 0
+        else
+            echo "✗ Failed to install curl"
+            return 1
+        fi
+    elif command -v pacman &> /dev/null; then
+        # Arch Linux
+        sudo pacman -S --noconfirm curl
+        if [ $? -eq 0 ]; then
+            echo "✓ curl installed successfully"
+            return 0
+        else
+            echo "✗ Failed to install curl"
+            return 1
+        fi
+    elif command -v brew &> /dev/null; then
+        # macOS
+        brew install curl
+        if [ $? -eq 0 ]; then
+            echo "✓ curl installed successfully"
+            return 0
+        else
+            echo "✗ Failed to install curl"
+            return 1
+        fi
+    else
+        echo "Unable to detect package manager for curl installation."
+        echo "Please install curl manually for your system."
+        return 1
+    fi
+}
+
+# Main installation logic
+echo ""
+echo "Checking dependencies..."
+
+missing_deps=()
+all_good=true
+
+# Check mpv
+if command_exists mpv; then
+    echo "✓ mpv is already installed"
+else
+    echo "✗ mpv is missing"
+    missing_deps+=("mpv")
+    all_good=false
+fi
+
+# Check curl
+if command_exists curl; then
+    echo "✓ curl is already installed"
+else
+    echo "✗ curl is missing"
+    missing_deps+=("curl")
+    all_good=false
+fi
+
+echo ""
+
+if [ "$all_good" = true ]; then
+    echo "🎉 All dependencies are installed!"
+    exit 0
+fi
+
+echo "Missing dependencies: ${missing_deps[*]}"
+echo ""
+
+# Install missing dependencies
+for dep in "${missing_deps[@]}"; do
+    case $dep in
+        mpv)
+            install_mpv
+            if [ $? -ne 0 ]; then
+                echo "Failed to install mpv. Please install it manually."
+                exit 1
+            fi
+            ;;
+        curl)
+            install_curl
+            if [ $? -ne 0 ]; then
+                echo "Failed to install curl. Please install it manually."
+                exit 1
+            fi
+            ;;
+    esac
+done
+
+echo ""
+echo "🎉 All dependencies installed successfully!"
+echo "You can now run ./radio to start the radio player."

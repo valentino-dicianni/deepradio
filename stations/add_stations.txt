@@ -1,1 +1,0 @@
-To add your favorite stations inspect element on browser and with curl -X GET the .m3u easily

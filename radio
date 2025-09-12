@@ -2,35 +2,123 @@
 
 # ASCII art banner
 BANNER="
-    ··················································
-    : ____                  ____           _ _       :
-    :|  _ \  ___  ___ _ __ |  _ \ __ _  __| (_) ___  :
-    :| | | |/ _ \/ _ \  _ \| |_) / _  |/ _  | |/ _ \ :
-    :| |_| |  __/  __/ |_) |  _ < (_| | (_| | | (_) |:
-    :|____/ \___|\___| .__/|_| \_\__,_|\__,_|_|\___/ :
-    :                |_|                             :
-    ··················································
+    ╔═════════════════════════════════════════════════════════════╗
+    ║                                                             ║
+    ║    ____                  ____           _ _                 ║
+    ║   |  _ \  ___  ___ _ __ |  _ \ __ _  __| (_) ___            ║
+    ║   | | | |/ _ \/ _ \  _ \| |_) / _  |/ _  | |/ _ \           ║
+    ║   | |_| |  __/  __/ |_) |  _ < (_| | (_| | | (_) |          ║
+    ║   |____/ \___|\___| .__/|_| \_\__,_|\__,_|_|\___/           ║
+    ║                  |_|                                        ║
+    ║                                                             ║
+    ║              🎵 Where Music Meets Terminal 🎵               ║
+    ║                                                             ║
+    ╚═════════════════════════════════════════════════════════════╝
 "
 
-# Define the radio menu options and corresponding commands
+# Dynamic radio menu (built from available stations)
 declare -A radio_menu
-radio_menu["Ambient"]="ambient.ogg.m3u"
-radio_menu["Trance"]="trance.ogg.m3u"
-radio_menu["Tronic"]="tronic.ogg.m3u"
-radio_menu["Dubstep"]="dubstepfm.ogg.m3u"
-
 stations_dir="stations"
+
+# Function to install stations
+install_stations() {
+  echo "Installing radio stations..."
+  
+  # Check if install-stations script exists
+  if [ ! -f "./install-stations" ]; then
+    echo "Error: install-stations script not found!"
+    echo "Please ensure install-stations is in the same directory as radio."
+    exit 1
+  fi
+  
+  # Make sure install-stations is executable
+  if [ ! -x "./install-stations" ]; then
+    echo "Making install-stations executable..."
+    chmod +x ./install-stations
+  fi
+  
+  # Check if stations directory exists
+  if [ ! -d "$stations_dir" ]; then
+    echo "Creating stations directory..."
+    mkdir -p "$stations_dir"
+  fi
+  
+  # Run install-stations and check exit code
+  ./install-stations
+  if [ $? -ne 0 ]; then
+    echo "Failed to install stations. Please check your internet connection and try again."
+    echo "You can also run './install-stations' manually to debug the issue."
+    exit 1
+  fi
+}
+
+# Build dynamic menu based on available station files
+build_dynamic_menu() {
+  # Clear the radio_menu array
+  radio_menu=()
+  
+  local config_file="stations/stations.conf"
+  
+  # Check if config file exists
+  if [ ! -f "$config_file" ]; then
+    echo "Error: $config_file not found!"
+    echo "Please create a stations configuration file."
+    exit 1
+  fi
+  
+  # Read stations from config file and build menu
+  while IFS='|' read -r station_name display_name url needs_referer; do
+    # Skip empty lines and comments
+    [[ -z "$station_name" || "$station_name" =~ ^# ]] && continue
+    
+    local station_file="${stations_dir}/${station_name}.ogg.m3u"
+    if [ -f "$station_file" ]; then
+      radio_menu["$display_name"]="${station_name}.ogg.m3u"
+    fi
+  done < "$config_file"
+}
+
+# Check dependencies
+check_dependencies() {
+  if ! command -v mpv &> /dev/null || ! command -v curl &> /dev/null; then
+    echo "$BANNER"
+    echo "Missing dependencies detected!"
+    echo ""
+    echo "Would you like to install dependencies automatically? (y/n)"
+    read -p "> " confirm
+    
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+      echo "Installing dependencies..."
+      ./install-deps
+      if [ $? -eq 0 ]; then
+        echo "✓ Dependencies installed successfully!"
+        echo ""
+      else
+        echo "✗ Failed to install dependencies."
+        echo "Please run './install-deps' manually or install mpv and curl yourself."
+        exit 1
+      fi
+    else
+      echo "Please run: ./install-deps"
+      echo "This will install mpv and curl automatically."
+      exit 1
+    fi
+  fi
+}
 
 # Function to display the radio menu
 display_menu() {
   clear
   echo "$BANNER"
   echo "Radio Menu:"
-  echo "1. Trance"
-  echo "2. Ambient"
-  echo "3. Tronic"
-  echo "4. Dubstep"
-  echo "5. Quit"
+  
+  local index=1
+  for station_name in "${!radio_menu[@]}"; do
+    echo "$index. $station_name"
+    ((index++))
+  done
+  
+  echo "$index. Quit"
 }
 
 play_radio_stream() {
@@ -40,24 +128,36 @@ play_radio_stream() {
   mpv "${stations_dir}/${radio_menu[$1]}"
 }
 
+# Check dependencies before starting
+check_dependencies
+
+# Install stations automatically
+install_stations
+
+# Build dynamic menu based on available stations
+build_dynamic_menu
+
 # Main program loop
 while true; do
   display_menu
   read -p "Select an option: " option
 
-  case $option in
-  1 | 2 | 3 | 4)
-    option_name=$(echo "${!radio_menu[@]}" | cut -d' ' -f$option)
-    play_radio_stream "$option_name"
-    ;;
-  5)
+  # Get the number of available stations
+  station_count=${#radio_menu[@]}
+  quit_option=$((station_count + 1))
+
+  # Check if option is a valid station number
+  if [[ "$option" =~ ^[0-9]+$ ]] && [ "$option" -ge 1 ] && [ "$option" -le "$station_count" ]; then
+    # Get station name by index
+    station_names=($(printf '%s\n' "${!radio_menu[@]}" | sort))
+    selected_station="${station_names[$((option - 1))]}"
+    play_radio_stream "$selected_station"
+  elif [ "$option" = "$quit_option" ]; then
     echo "Goodbye!"
     exit 0
-    ;;
-  *)
+  else
     echo "$BANNER"
     echo "Invalid option. Please try again."
     read -p "Press Enter to continue..."
-    ;;
-  esac
+  fi
 done
