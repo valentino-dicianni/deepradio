@@ -18,6 +18,7 @@ BANNER="
 
 # Dynamic radio menu (built from available stations)
 declare -A radio_menu
+declare -a radio_menu_order  # Array to maintain order
 stations_dir="stations"
 
 # Function to install stations
@@ -54,8 +55,9 @@ install_stations() {
 
 # Build dynamic menu based on available station files
 build_dynamic_menu() {
-  # Clear the radio_menu array
+  # Clear the radio_menu array and order
   radio_menu=()
+  radio_menu_order=()
   
   local config_file="stations/stations.conf"
   
@@ -74,6 +76,7 @@ build_dynamic_menu() {
     local station_file="${stations_dir}/${station_name}.ogg.m3u"
     if [ -f "$station_file" ]; then
       radio_menu["$display_name"]="${station_name}.ogg.m3u"
+      radio_menu_order+=("$display_name")  # Maintain order
     fi
   done < "$config_file"
 }
@@ -113,7 +116,7 @@ display_menu() {
   echo "Radio Menu:"
   
   local index=1
-  for station_name in "${!radio_menu[@]}"; do
+  for station_name in "${radio_menu_order[@]}"; do
     echo "$index. $station_name"
     ((index++))
   done
@@ -148,9 +151,8 @@ while true; do
 
   # Check if option is a valid station number
   if [[ "$option" =~ ^[0-9]+$ ]] && [ "$option" -ge 1 ] && [ "$option" -le "$station_count" ]; then
-    # Get station name by index
-    station_names=($(printf '%s\n' "${!radio_menu[@]}" | sort))
-    selected_station="${station_names[$((option - 1))]}"
+    # Get station name by index (same order as display_menu)
+    selected_station="${radio_menu_order[$((option - 1))]}"
     play_radio_stream "$selected_station"
   elif [ "$option" = "$quit_option" ]; then
     echo "Goodbye!"
